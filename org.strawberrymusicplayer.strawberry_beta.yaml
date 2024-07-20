@@ -1,0 +1,175 @@
+app-id: org.strawberrymusicplayer.strawberry
+runtime: org.kde.Platform
+runtime-version: '6.6'
+sdk: org.kde.Sdk
+branch: master
+rename-icon: strawberry
+command: start-strawberry
+cleanup:
+  - /include
+  - /lib/cmake
+  - /lib/pkgconfig
+  - /share/info
+  - /share/man
+  - /share/tagparser
+  - /share/c++utilities
+  - /bin/mmc-tool
+finish-args:
+  - --share=ipc
+  - --socket=fallback-x11
+  - --socket=wayland
+  - --socket=pulseaudio
+  - --device=all
+  - --share=network
+  - --filesystem=xdg-music
+  - --filesystem=/mnt
+  - --filesystem=/media
+  - --filesystem=/run/media
+  - --system-talk-name=org.freedesktop.Avahi
+  - --talk-name=org.freedesktop.Notifications
+  - --system-talk-name=org.freedesktop.UDisks2
+  - --talk-name=org.gnome.SettingsDaemon.MediaKeys
+  - --talk-name=org.wiimotedev.deviceEvents
+  - --talk-name=org.mpris.MediaPlayer2.Player
+  - --own-name=org.mpris.MediaPlayer2.strawberry
+  - --talk-name=org.kde.StatusNotifierWatcher
+  - --talk-name=org.kde.kglobalaccel
+
+modules:
+  - name: boost
+    buildsystem: simple
+    build-commands:
+      - ./bootstrap.sh  --prefix="${FLATPAK_DEST}"
+      - ./b2 --without-mpi --without-graph_parallel -j ${FLATPAK_BUILDER_N_JOBS}
+      - ./b2 --without-mpi --without-graph_parallel -j ${FLATPAK_BUILDER_N_JOBS} headers
+      - ./b2 --without-mpi --without-graph_parallel install
+    sources:
+      - type: archive
+        url: https://boostorg.jfrog.io/artifactory/main/release/1.85.0/source/boost_1_85_0.tar.gz
+        sha256: be0d91732d5b0cc6fbb275c7939974457e79b54d6f07ce2e3dfdd68bef883b0b
+        x-checker-data:
+          type: anitya
+          project-id: 6845
+          url-template: https://boostorg.jfrog.io/artifactory/main/release/$version/source/boost_${version0}_${version1}_$version2.tar.gz
+  - name: chromaprint
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+    buildsystem: cmake-ninja
+    sources:
+      - type: archive
+        url: https://github.com/acoustid/chromaprint/releases/download/v1.5.1/chromaprint-1.5.1.tar.gz
+        sha256: a1aad8fa3b8b18b78d3755b3767faff9abb67242e01b478ec9a64e190f335e1c
+        x-checker-data:
+          type: anitya
+          project-id: 286
+          url-template: https://github.com/acoustid/chromaprint/releases/download/v$version/chromaprint-$version.tar.gz
+  # TODO update
+  - name: protobuf
+    cleanup:
+      - /bin/protoc
+    sources:
+      - type: archive
+        url: https://github.com/protocolbuffers/protobuf/releases/download/v21.8/protobuf-cpp-3.21.8.tar.gz
+        sha256: f6251f2d00aad41b34c1dfa3d752713cb1bb1b7020108168a4deaa206ba8ed42
+  - name: taglib
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+      - -DBUILD_SHARED_LIBS=ON
+      - -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+      - -DWITH_MP4=ON
+      - -DWITH_ASF=ON
+    cleanup:
+      - /bin
+    sources:
+      - type: archive
+        url: https://github.com/taglib/taglib/releases/download/v1.13.1/taglib-1.13.1.tar.gz
+        sha256: c8da2b10f1bfec2cd7dbfcd33f4a2338db0765d851a50583d410bacf055cfd0b
+  - name: libebur128
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+    sources:
+      - type: git
+        url: https://github.com/jiixyj/libebur128.git
+        tag: v1.2.6
+        commit: 67b33abe1558160ed76ada1322329b0e9e058b02
+        x-checker-data:
+          type: git
+          tag-pattern: v([\d]\.[\d]\.[\d])
+  - name: libcdio
+    config-opts:
+      - --without-cd-drive
+      - --without-cd-info
+      - --without-cdda-player
+      - --without-cd-read
+      - --without-iso-info
+      - --without-iso-read
+      - --with-pic
+      - --disable-static
+    sources:
+      - type: archive
+        url: https://ftp.gnu.org/gnu/libcdio/libcdio-2.1.0.tar.bz2
+        sha256: 8550e9589dbd594bfac93b81ecf129b1dc9d0d51e90f9696f1b2f9b2af32712b
+        x-checker-data:
+          type: anitya
+          project-id: 1573
+          stable-only: true
+          url-template: https://ftp.gnu.org/gnu/libcdio/libcdio-$version.tar.bz2
+    cleanup:
+      - /bin
+  - shared-modules/libusb/libusb.json
+  - name: libmtp
+    cleanup:
+      - /bin
+      - /share
+    config-opts:
+      - --disable-static
+      - --with-udev=/app/lib/udev
+    sources:
+      - type: archive
+        url: https://github.com/libmtp/libmtp/releases/download/v1.1.21/libmtp-1.1.21.tar.gz
+        sha256: f4c1ceb3df020a6cb851110f620c14fe399518c494ed252039cbfb4e34335135
+        x-checker-data:
+          type: anitya
+          project-id: 10017
+          url-template: https://github.com/libmtp/libmtp/releases/download/v$version/libmtp-$version.tar.gz
+  - name: vlc
+    cleanup:
+      - /share
+      - /bin
+    config-opts:
+      - BUILDCC=/usr/bin/gcc -std=gnu99
+      - --disable-debug
+      - --disable-ncurses
+      - --disable-a52
+      - --disable-qt
+      - --disable-lua
+      - --disable-vlc
+      - --prefix=/app
+    sources:
+      - type: archive
+        url: https://download.videolan.org/videolan/vlc/3.0.21/vlc-3.0.21.tar.xz
+        sha256: 24dbbe1d7dfaeea0994d5def0bbde200177347136dbfe573f5b6a4cee25afbb0
+        x-checker-data:
+          type: anitya
+          project-id: 6504
+          versions:
+            '>=': '3'
+            <: '4'
+          url-template: https://download.videolan.org/videolan/vlc/$version/vlc-$version.tar.xz
+  - name: strawberry
+    buildsystem: cmake-ninja
+    config-opts:
+      - -DCMAKE_BUILD_TYPE=Release
+    post-install:
+      - install -Dm755 start-strawberry.sh /app/bin/start-strawberry
+    sources:
+      - type: git
+        url: https://github.com/strawberrymusicplayer/strawberry.git
+        commit: fbdac36f6f442faa7da703cd9804781b0ec7ab4d
+      - type: script
+        dest-filename: start-strawberry.sh
+        commands:
+          - export TMPDIR=$XDG_RUNTIME_DIR/app/$FLATPAK_ID
+          - /app/bin/strawberry "$@"
